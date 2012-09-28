@@ -1,0 +1,22 @@
+Static linking is somewhat broken in glibc, the fundamental issue here
+is that the _rtld_global_ro structure, which is initialized during program
+start from the aux vector, is not copied/linked into libraries that the
+static program loads. This means dl_pagesize is 0 which means getpagesize
+blows up with an assert.
+
+This work around doesn't fix the underlying problem, but avoids the assert.
+See http://sourceware.org/bugzilla/show_bug.cgi?id=11929,
+taken from part of commit 02d46fc4.
+
+diff --git a/elf/rtld.c b/elf/rtld.c
+index 4f6bbfd..b3959a3 100644
+--- a/elf/rtld.c
++++ b/elf/rtld.c
+@@ -161,6 +161,7 @@ struct rtld_global_ro _rtld_global_ro attribute_relro =
+     ._dl_lazy = 1,
+     ._dl_fpu_control = _FPU_DEFAULT,
+     ._dl_pointer_guard = 1,
++    ._dl_pagesize = EXEC_PAGESIZE,
+ 
+     /* Function pointers.  */
+     ._dl_debug_printf = _dl_debug_printf,
